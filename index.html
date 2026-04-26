@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fornkartan</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Sidebar ─────────────────────────────────────────── -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">🏛</div>
+        <div>
+          <h1>Fornkartan</h1>
+          <p class="subtitle">Sveriges historiska platser</p>
+        </div>
+        <button id="sidebar-toggle" title="Dölj/visa panel">◀</button>
+      </div>
+
+      <div id="sidebar-body">
+
+      <div class="section">
+        <h3 class="section-title">Visa på kartan</h3>
+        <div class="filter-group">
+
+          <label class="filter-item" for="filter-archaeological">
+            <input type="checkbox" id="filter-archaeological" checked />
+            <span class="dot" style="background:#c0392b"></span>
+            <span class="filter-label">Fornlämningar</span>
+            <span class="count" id="count-archaeological">–</span>
+          </label>
+
+          <label class="filter-item" for="filter-building">
+            <input type="checkbox" id="filter-building" checked />
+            <span class="dot" style="background:#2471a3"></span>
+            <span class="filter-label">Historiska byggnader</span>
+            <span class="count" id="count-building">–</span>
+          </label>
+
+          <label class="filter-item" for="filter-environment">
+            <input type="checkbox" id="filter-environment" checked />
+            <span class="dot" style="background:#1e8449"></span>
+            <span class="filter-label">Kulturmiljöer</span>
+            <span class="count" id="count-environment">–</span>
+          </label>
+
+          <label class="filter-item" for="filter-other">
+            <input type="checkbox" id="filter-other" checked />
+            <span class="dot" style="background:#d35400"></span>
+            <span class="filter-label">Övrigt historiskt</span>
+            <span class="count" id="count-other">–</span>
+          </label>
+
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="search-row">
+          <input type="text" id="search-input" placeholder="Sök ort, stad, område…" autocomplete="off" />
+          <button id="search-btn" class="btn-icon" title="Gå till platsen">🔍</button>
+          <button class="btn-icon btn-icon--primary" id="locate-btn" title="Min position">📍</button>
+          <button class="btn-icon btn-icon--secondary" id="reload-btn" title="Ladda om area">↺</button>
+        </div>
+        <ul id="search-suggestions" class="suggestions hidden"></ul>
+      </div>
+
+      <div class="section" id="status-section">
+        <div id="loading-row" class="loading-row hidden">
+          <span class="spinner"></span>
+          <span id="loading-text">Hämtar data…</span>
+        </div>
+        <p id="status-msg" class="status-msg"></p>
+      </div>
+
+      <div class="sidebar-footer">
+        <span>Data: <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a>
+          &amp; <a href="https://www.raa.se" target="_blank" rel="noopener">Riksantikvarieämbetet</a></span>
+        <span class="footer-credit">Utvecklad av Jonas Karlsson 2026</span>
+      </div>
+
+      </div><!-- #sidebar-body -->
+    </aside>
+
+    <!-- ── Map ────────────────────────────────────────────── -->
+    <main id="map-container">
+      <div id="map"></div>
+
+      <!-- Floating info card -->
+      <div id="info-card" class="hidden">
+        <button id="close-card" title="Stäng">✕</button>
+        <div id="info-badge"></div>
+        <h2 id="info-name"></h2>
+        <dl id="info-details"></dl>
+        <div id="info-links"></div>
+      </div>
+    </main>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
