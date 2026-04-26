@@ -1,0 +1,8 @@
+name               = "fornkartan-api"
+main               = "src/index.js"
+compatibility_date = "2025-01-01"
+account_id         = "84fb34c5edbb96289d7a047b0ef93690"
+
+[[r2_buckets]]
+binding     = "BUCKET"
+bucket_name = "fornkartan-cache"

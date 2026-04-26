@@ -1,11 +1,16 @@
 'use strict';
 
 // ── Config ────────────────────────────────────────────────────────────────────
+// Sätt till din deployade Worker-URL efter `wrangler deploy` i kulturarv/worker/
+// Exempel: 'https://fornkartan-api.DITTNAMN.workers.dev'
+// Lämna null för att hämta direkt från Overpass (ingen cache).
+const WORKER_URL     = null;
+
 const OVERPASS_URL   = 'https://overpass-api.de/api/interpreter';
 const FORNSOK_URL    = 'https://app.raa.se/open/fornsok/api/v2';
 const DEFAULT_CENTER = [59.3293, 18.0686]; // Stockholm fallback
 const DEFAULT_ZOOM   = 13;
-const LOAD_ZOOM_MIN  = 12; // Don't auto-load below this zoom (too many results)
+const LOAD_ZOOM_MIN  = 12;
 
 // ── Type definitions ──────────────────────────────────────────────────────────
 const TYPES = {
@@ -225,34 +230,18 @@ async function loadData() {
   setStatus('');
 
   try {
-    const [osmItems, raaItems] = await Promise.allSettled([
-      fetchOverpass(bbox),
-      fetchFornsok(bbox),
-    ]);
-
-    const merged = new Map();
-
-    if (osmItems.status === 'fulfilled') {
-      for (const item of osmItems.value) merged.set(item.id, item);
+    let items;
+    if (WORKER_URL) {
+      items = await fetchFromWorker(bbox);
     } else {
-      console.warn('Overpass error:', osmItems.reason);
+      items = await fetchDirect(bbox);
     }
 
-    if (raaItems.status === 'fulfilled') {
-      for (const item of raaItems.value) {
-        if (!merged.has(item.id)) merged.set(item.id, item);
-      }
-    } else {
-      console.warn('Fornsök error (non-critical):', raaItems.reason);
-    }
-
-    allItems = Array.from(merged.values());
+    allItems = items;
     renderMarkers();
     updateCounts();
     loadedBbox = bbox;
-
-    const total = allItems.length;
-    setStatus(total > 0 ? `${total} platser hittade i vyn.` : 'Inga historiska platser hittades i vyn.');
+    setStatus(items.length > 0 ? `${items.length} platser hittade i vyn.` : 'Inga historiska platser hittades i vyn.');
   } catch (err) {
     console.error(err);
     setStatus('Fel vid datahämtning. Försök igen.');
@@ -261,19 +250,48 @@ async function loadData() {
   }
 }
 
-// Overpass API — OpenStreetMap data
+// Hämtar via Cloudflare Worker (med R2-cache)
+async function fetchFromWorker(bbox) {
+  const { south, west, north, east } = bbox;
+  const url = `${WORKER_URL}/api/heritage?south=${south}&west=${west}&north=${north}&east=${east}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
+  const data = await res.json();
+
+  return (data.items || [])
+    .map(item => ({ ...item, type: item.type || classifyItem(item.tags) }))
+    .filter(item => item.type);
+}
+
+// Hämtar direkt från Overpass + Fornsök (ingen cache, används om WORKER_URL är null)
+async function fetchDirect(bbox) {
+  const [osmResult, raaResult] = await Promise.allSettled([
+    fetchOverpass(bbox),
+    fetchFornsok(bbox),
+  ]);
+
+  const merged = new Map();
+  if (raaResult.status === 'fulfilled') {
+    for (const item of raaResult.value) merged.set(item.id, item);
+  } else {
+    console.warn('Fornsök (non-critical):', raaResult.reason?.message);
+  }
+  if (osmResult.status === 'fulfilled') {
+    for (const item of osmResult.value) {
+      if (!merged.has(item.id)) merged.set(item.id, item);
+    }
+  } else {
+    console.warn('Overpass:', osmResult.reason?.message);
+  }
+  return Array.from(merged.values());
+}
+
+// Overpass API — OSM-data
 async function fetchOverpass(bbox) {
   const { south, west, north, east } = bbox;
-  const query = `
-[out:json][timeout:30][bbox:${south},${west},${north},${east}];
-(
-  node["historic"];
-  way["historic"];
-  node["heritage"];
-  way["heritage"];
-);
-out center tags;
-`.trim();
+  const query = `[out:json][timeout:30][bbox:${south},${west},${north},${east}];
+(node["historic"];way["historic"];node["heritage"];way["heritage"];);
+out center tags;`;
 
   const res = await fetch(OVERPASS_URL, {
     method:  'POST',
@@ -288,21 +306,18 @@ out center tags;
     const tags = el.tags || {};
     const type = classifyItem(tags);
     if (!type) continue;
-
     const lat = el.type === 'node' ? el.lat : el.center?.lat;
     const lng = el.type === 'node' ? el.lon : el.center?.lon;
     if (!lat || !lng) continue;
-
     items.push({ id: `osm-${el.type}-${el.id}`, lat, lng, type, tags, source: 'osm', osmId: el.id, osmType: el.type });
   }
   return items;
 }
 
-// RAÄ Fornsök API — Swedish National Heritage archaeological sites
+// RAÄ Fornsök — arkeologiska fornlämningar
 async function fetchFornsok(bbox) {
   const { south, west, north, east } = bbox;
-  const url = `${FORNSOK_URL}/features?bbox=${west},${south},${east},${north}&type=Archaeological`;
-
+  const url = `${FORNSOK_URL}/features?bbox=${west},${south},${east},${north}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Fornsök HTTP ${res.status}`);
   const json = await res.json();
