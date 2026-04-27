@@ -167,8 +167,6 @@ let isLoading   = false;
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const dom = {
-  sidebar:      () => document.getElementById('sidebar'),
-  sidebarToggle:() => document.getElementById('sidebar-toggle'),
   locateBtn:    () => document.getElementById('locate-btn'),
   reloadBtn:    () => document.getElementById('reload-btn'),
   loadingRow:   () => document.getElementById('loading-row'),
@@ -640,20 +638,23 @@ function bindFilters() {
   }
 }
 
-// ── Sidebar toggle ────────────────────────────────────────────────────────────
-function bindSidebarToggle() {
-  const btn     = dom.sidebarToggle();
-  const sidebar = dom.sidebar();
+// ── Helskärmsknapp ────────────────────────────────────────────────────────────
+function bindFullscreen() {
+  const btn = document.getElementById('fullscreen-btn');
+  const app = document.getElementById('app');
   btn.addEventListener('click', () => {
-    const collapsed = sidebar.classList.toggle('collapsed');
-    btn.textContent = collapsed ? '▼' : '◀';
+    const full = app.classList.toggle('fullscreen');
+    btn.textContent = full ? '⛶' : '⛶';
+    btn.title = full ? 'Normalt läge' : 'Helskärm';
+    btn.style.opacity = full ? '0.6' : '1';
+    setTimeout(() => map.invalidateSize(), 10);
   });
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   bindFilters();
-  bindSidebarToggle();
+  bindFullscreen();
   bindSearch();
   dom.closeCard().addEventListener('click', hideInfoCard);
   dom.locateBtn().addEventListener('click', () => { hideInfoCard(); locateUser(); });
