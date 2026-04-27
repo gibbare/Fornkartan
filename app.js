@@ -537,7 +537,7 @@ function showInfoCard(item) {
 
   addLink(tags.wikipedia ? `https://sv.wikipedia.org/wiki/${encodeURIComponent(tags.wikipedia.replace(/^sv:/, ''))}` : null, '📖', 'Wikipedia');
   addLink(tags.wikidata  ? `https://www.wikidata.org/wiki/${tags.wikidata}` : null, '🔗', 'Wikidata');
-  addLink(tags.raaUrl,                        '🏛', 'Riksantikvarieämbetet');
+  addLink(tags.raaUrl, '🏛', item.source === 'bbr' ? 'Bebyggelseregistret' : 'Riksantikvarieämbetet');
 
   if (item.source === 'osm') {
     const osmUrl = `https://www.openstreetmap.org/${item.osmType}/${item.osmId}`;
