@@ -533,7 +533,6 @@ function showInfoCard(item) {
     linksEl.appendChild(a);
   }
 
-  addLink(tags.website || tags.url,           '🌐', 'Officiell webbplats');
   addLink(tags.wikipedia ? `https://sv.wikipedia.org/wiki/${encodeURIComponent(tags.wikipedia.replace(/^sv:/, ''))}` : null, '📖', 'Wikipedia');
   addLink(tags.wikidata  ? `https://www.wikidata.org/wiki/${tags.wikidata}` : null, '🔗', 'Wikidata');
   addLink(tags.raaUrl,                        '🏛', 'Riksantikvarieämbetet');
