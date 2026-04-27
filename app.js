@@ -225,6 +225,8 @@ function setLoading(active, text = 'Hämtar data…') {
   dom.loadingRow().classList.toggle('hidden', !active);
   dom.loadingText().textContent = text;
   dom.reloadBtn().disabled = active;
+  const mapLoading = document.getElementById('map-loading');
+  if (mapLoading) mapLoading.classList.toggle('hidden', !active);
 }
 
 function updateCounts() {
