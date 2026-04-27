@@ -465,8 +465,11 @@ function showInfoCard(item) {
   linksEl.innerHTML = '';
 
   function addLink(href, icon, label) {
-    if (!href) return;
+    if (!href || typeof href !== 'string') return;
+    const trimmed = href.trim();
+    if (!trimmed || !trimmed.startsWith('http')) return;
     const a    = document.createElement('a');
+    href = trimmed;
     a.href     = href;
     a.target   = '_blank';
     a.rel      = 'noopener noreferrer';
