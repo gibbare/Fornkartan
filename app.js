@@ -56,8 +56,8 @@ const TYPES = {
   },
 };
 
-// Swedish translations for OSM historic tag values
 const HISTORIC_LABELS = {
+  // Arkeologi
   archaeological_site: 'Fornlämning',
   megalith:            'Megalit',
   stone_circle:        'Stencirkel',
@@ -67,35 +67,95 @@ const HISTORIC_LABELS = {
   rune_stone:          'Runsten',
   barrow:              'Gravhög',
   tumulus:             'Kummel',
+  grave_yard:          'Kyrkogård / begravningsplats',
+  tomb:                'Grav',
+  // Byggnader
   castle:              'Slott / borg',
+  castle_keep:         'Borgtorn',
   church:              'Kyrka',
+  cathedral:           'Domkyrka',
+  chapel:              'Kapell',
   manor:               'Herrgård',
+  farm:                'Historisk gård',
+  farmstead:           'Historisk gård',
   fortification:       'Fästning',
+  fort:                'Fort',
   tower:               'Torn',
   windmill:            'Väderkvarn',
+  watermill:           'Vattenkvarn',
   monastery:           'Kloster',
+  abbey:               'Kloster / abbotei',
   palace:              'Palats',
   city_gate:           'Stadsport',
+  city_wall:           'Stadsmur',
   lighthouse:          'Fyr',
-  watermill:           'Vattenkvarn',
-  farm:                'Historisk gård',
+  building:            'Historisk byggnad',
+  house:               'Historiskt hus',
+  residence:           'Historisk bostad',
+  // Kulturmiljöer
   battlefield:         'Slagfält',
+  heritage_transport:  'Historisk transport',
+  industrial:          'Industrihistoria',
+  bridge:              'Historisk bro',
+  aqueduct:            'Akvedukt',
+  district:            'Historiskt distrikt',
+  mining:              'Gruva / bergverk',
+  navigation:          'Sjöfart / navigation',
+  road:                'Historisk väg',
+  // Övrigt
   memorial:            'Minnesmärke',
   monument:            'Monument',
   boundary_stone:      'Gränssten',
   wayside_cross:       'Vägkors',
+  wayside_shrine:      'Vägkyrka',
   milestone:           'Milsten',
   ruins:               'Ruin',
-  district:            'Historiskt distrikt',
-  bridge:              'Historisk bro',
-  industrial:          'Industrihistoria',
+  cannon:              'Kanon',
+  aircraft:            'Historiskt flygplan',
+  vehicle:             'Historiskt fordon',
+  ship:                'Historiskt fartyg',
+  tank:                'Historisk stridsvagn',
+  locomotive:          'Historiskt lok',
+  pillory:             'Skampåle',
+  yes:                 'Historisk plats',
 };
 
 const HERITAGE_LABELS = {
-  1: 'UNESCO Världsarv',
-  2: 'Byggnadsminne',
-  3: 'Kulturmärkt byggnad',
+  '1': 'UNESCO Världsarv',
+  '2': 'Byggnadsminne',
+  '3': 'Kulturmärkt byggnad',
+  'yes': 'Skyddad byggnad',
+  'listed': 'Listad byggnad',
 };
+
+// ── Bildhämtning ──────────────────────────────────────────────────────────────
+async function fetchImage(tags) {
+  if (tags.image) return tags.image;
+
+  if (tags.wikidata) {
+    try {
+      const res  = await fetch(`https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=${tags.wikidata}&property=P18&format=json&origin=*`);
+      const data = await res.json();
+      const filename = data.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+      if (filename) {
+        return `https://commons.wikimedia.org/w/index.php?title=Special:FilePath/${encodeURIComponent(filename)}&width=200`;
+      }
+    } catch { /* ignorera */ }
+  }
+
+  if (tags.wikipedia) {
+    try {
+      const raw   = tags.wikipedia.replace(/^(sv|en|de|no|da|fi):/i, '');
+      const lang  = /^en:/i.test(tags.wikipedia) ? 'en' : 'sv';
+      const res   = await fetch(`https://${lang}.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(raw)}&prop=pageimages&pithumbsize=200&format=json&origin=*`);
+      const data  = await res.json();
+      const page  = Object.values(data.query?.pages || {})[0];
+      if (page?.thumbnail?.source) return page.thumbnail.source;
+    } catch { /* ignorera */ }
+  }
+
+  return null;
+}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let map;
@@ -119,6 +179,8 @@ const dom = {
   infoName:     () => document.getElementById('info-name'),
   infoDetails:  () => document.getElementById('info-details'),
   infoLinks:    () => document.getElementById('info-links'),
+  infoImgWrap:  () => document.getElementById('info-img-wrap'),
+  infoImg:      () => document.getElementById('info-img'),
   closeCard:    () => document.getElementById('close-card'),
 };
 
@@ -392,11 +454,12 @@ function showInfoCard(item) {
     details.appendChild(dd);
   }
 
-  const historicLabel = HISTORIC_LABELS[tags.historic] || tags.historic;
-  addRow('Typ',        historicLabel || cfg.label);
-  addRow('Plats',      tags['addr:city'] || tags.municipality || tags.county || '');
+  const historicLabel = HISTORIC_LABELS[(tags.historic || '').toLowerCase()] || cfg.label;
+  addRow('Typ',       historicLabel);
+  addRow('RAÄ-nr',    tags.raaNumber || '');
+  addRow('Plats',     tags['addr:city'] || tags.municipality || tags.county || '');
   addRow('Skyddsnivå', HERITAGE_LABELS[tags.heritage] || (tags['heritage:operator'] ? `Skyddad av ${tags['heritage:operator']}` : ''));
-  addRow('Byggd',      tags.start_date || tags['historic:start_date'] || tags['construction_date'] || '');
+  addRow('Byggd',     tags.start_date || tags['historic:start_date'] || tags['construction_date'] || '');
   if (tags.description) addRow('Info', tags.description.substring(0, 200) + (tags.description.length > 200 ? '…' : ''));
 
   // Links
@@ -421,14 +484,26 @@ function showInfoCard(item) {
 
   if (item.source === 'osm') {
     const osmUrl = `https://www.openstreetmap.org/${item.osmType}/${item.osmId}`;
-    addLink(osmUrl, '🗺', 'Visa på OpenStreetMap');
+    addLink(osmUrl, '🗺', 'OpenStreetMap');
   }
 
   if (!linksEl.children.length) {
     linksEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted);margin-top:4px">Inga externa länkar tillgängliga.</p>';
   }
 
+  // Dölj bild medan vi hämtar
+  dom.infoImgWrap().classList.add('hidden');
+  dom.infoImg().src = '';
   dom.infoCard().classList.remove('hidden');
+
+  // Hämta bild asynkront — kortet visas direkt utan att vänta
+  fetchImage(tags).then(url => {
+    if (!url) return;
+    const img = dom.infoImg();
+    img.onload  = () => dom.infoImgWrap().classList.remove('hidden');
+    img.onerror = () => dom.infoImgWrap().classList.add('hidden');
+    img.src = url;
+  });
 }
 
 function hideInfoCard() {

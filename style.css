@@ -300,6 +300,29 @@ a:hover { text-decoration: underline; }
   opacity: 0.9;
 }
 
+#info-body {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+#info-text { flex: 1; min-width: 0; }
+
+#info-img-wrap {
+  flex-shrink: 0;
+  width: 90px;
+}
+#info-img-wrap.hidden { display: none; }
+
+#info-img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  border: 1px solid var(--border);
+}
+
 #info-name {
   font-size: 17px;
   font-weight: 700;
@@ -319,19 +342,20 @@ a:hover { text-decoration: underline; }
 #info-details dt { color: var(--text-muted); white-space: nowrap; }
 #info-details dd { color: var(--text); word-break: break-word; }
 
-#info-links { display: flex; flex-direction: column; gap: 6px; }
+#info-links { display: inline-flex; flex-direction: column; gap: 6px; }
 
 .info-link {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--accent);
   text-decoration: none;
   font-size: 13px;
+  white-space: nowrap;
   transition: background 0.15s;
 }
 .info-link:hover { background: var(--border); text-decoration: none; }
