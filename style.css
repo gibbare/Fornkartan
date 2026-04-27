@@ -185,17 +185,17 @@ a:hover { text-decoration: underline; }
 /* ── Panel footer ─────────────────────────────────────────── */
 .panel-footer {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
   padding: 4px 0 2px;
   font-size: 10px;
   color: var(--text-muted);
   border-top: 1px solid var(--border);
   margin-top: 4px;
-  white-space: nowrap;
+  text-align: center;
 }
-.footer-credit { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+.footer-credit { font-size: 10px; color: var(--text-muted); }
 
 /* ── Floating info card ───────────────────────────────────── */
 #info-card {
