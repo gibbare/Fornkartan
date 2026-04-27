@@ -105,7 +105,15 @@ async function fetchKsamsok(s, w, n, e) {
     query,
   });
 
-  const res = await fetch(`${KSAMSOK_URL}?${params}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+
+  let res;
+  try {
+    res = await fetch(`${KSAMSOK_URL}?${params}`, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) throw new Error(`K-samsök HTTP ${res.status}`);
   const xml = await res.text();
 
@@ -215,9 +223,10 @@ export default {
       fetchOverpass(s, w, n, e),
     ]);
 
-    const raaItems = raaResult.status === 'fulfilled' ? raaResult.value : [];
-    const osmItems = osmResult.status === 'fulfilled' ? osmResult.value : [];
-    const items    = merge(raaItems, osmItems);
+    const raaItems  = raaResult.status === 'fulfilled' ? raaResult.value : [];
+    const osmItems  = osmResult.status === 'fulfilled' ? osmResult.value : [];
+    const items     = merge(raaItems, osmItems);
+    const raaFailed = raaResult.status === 'rejected';
 
     const payload = {
       items,
@@ -227,17 +236,20 @@ export default {
       sources: {
         raa:      raaItems.length,
         osm:      osmItems.length,
-        raaError: raaResult.status === 'rejected' ? raaResult.reason?.message : null,
+        raaError: raaFailed ? raaResult.reason?.message : null,
         osmError: osmResult.status === 'rejected' ? osmResult.reason?.message : null,
       },
     };
 
     const body = JSON.stringify(payload);
 
-    await env.BUCKET.put(key, body, {
-      httpMetadata:   { contentType: 'application/json' },
-      customMetadata: { cachedAt: payload.cachedAt },
-    });
+    // Cachelagra bara om K-samsök lyckades — annars saknas fornlämningar
+    if (!raaFailed) {
+      await env.BUCKET.put(key, body, {
+        httpMetadata:   { contentType: 'application/json' },
+        customMetadata: { cachedAt: payload.cachedAt },
+      });
+    }
 
     return new Response(body, {
       headers: { 'Content-Type': 'application/json', 'X-Cache': 'MISS',
