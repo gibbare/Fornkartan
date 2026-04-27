@@ -4,7 +4,7 @@
 // Sätt till din deployade Worker-URL efter `wrangler deploy` i kulturarv/worker/
 // Exempel: 'https://fornkartan-api.DITTNAMN.workers.dev'
 // Lämna null för att hämta direkt från Overpass (ingen cache).
-const WORKER_URL     = null;
+const WORKER_URL     = 'https://fornkartan-api.gibbare.workers.dev';
 
 const OVERPASS_URL   = 'https://overpass-api.de/api/interpreter';
 const FORNSOK_URL    = 'https://app.raa.se/open/fornsok/api/v2';
