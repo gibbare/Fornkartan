@@ -11,7 +11,7 @@ const FORNSOK_URL    = 'https://app.raa.se/open/fornsok/api/v2';
 const DEFAULT_CENTER    = [59.3293, 18.0686];
 const DEFAULT_ZOOM      = 13;
 const LOAD_ZOOM_MIN     = 11;
-const LOCAL_CACHE_TTL   = 6 * 60 * 60 * 1000;  // 6 timmar
+const LOCAL_CACHE_TTL   = 24 * 60 * 60 * 1000;  // 24 timmar
 const LOCAL_CACHE_STEP  = 0.05;                  // ~5 km, matchar R2-cachen
 
 // ── Type definitions ──────────────────────────────────────────────────────────
