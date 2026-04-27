@@ -8,9 +8,11 @@ const WORKER_URL     = null;
 
 const OVERPASS_URL   = 'https://overpass-api.de/api/interpreter';
 const FORNSOK_URL    = 'https://app.raa.se/open/fornsok/api/v2';
-const DEFAULT_CENTER = [59.3293, 18.0686]; // Stockholm fallback
-const DEFAULT_ZOOM   = 13;
-const LOAD_ZOOM_MIN  = 12;
+const DEFAULT_CENTER    = [59.3293, 18.0686];
+const DEFAULT_ZOOM      = 13;
+const LOAD_ZOOM_MIN     = 11;
+const LOCAL_CACHE_TTL   = 6 * 60 * 60 * 1000;  // 6 timmar
+const LOCAL_CACHE_STEP  = 0.05;                  // ~5 km, matchar R2-cachen
 
 // ── Type definitions ──────────────────────────────────────────────────────────
 const TYPES = {
@@ -247,6 +249,45 @@ function bboxTooLarge(bbox) {
   return (bbox.north - bbox.south) > 0.5 || (bbox.east - bbox.west) > 0.8;
 }
 
+// ── Lokal cache (localStorage, 6h TTL) ───────────────────────────────────────
+function snapVal(v, up) {
+  return up
+    ? Math.ceil(v  / LOCAL_CACHE_STEP) * LOCAL_CACHE_STEP
+    : Math.floor(v / LOCAL_CACHE_STEP) * LOCAL_CACHE_STEP;
+}
+
+function localCacheKey(bbox) {
+  const s = snapVal(bbox.south, false).toFixed(2);
+  const w = snapVal(bbox.west,  false).toFixed(2);
+  const n = snapVal(bbox.north, true).toFixed(2);
+  const e = snapVal(bbox.east,  true).toFixed(2);
+  return `fornkartan:${s},${w},${n},${e}`;
+}
+
+function cacheGet(bbox) {
+  try {
+    const raw = localStorage.getItem(localCacheKey(bbox));
+    if (!raw) return null;
+    const { items, cachedAt } = JSON.parse(raw);
+    if (Date.now() - cachedAt > LOCAL_CACHE_TTL) { localStorage.removeItem(localCacheKey(bbox)); return null; }
+    return items;
+  } catch { return null; }
+}
+
+function cachePut(bbox, items) {
+  try {
+    localStorage.setItem(localCacheKey(bbox), JSON.stringify({ items, cachedAt: Date.now() }));
+  } catch {
+    // localStorage full — rensa äldsta Fornkartan-nycklarna
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('fornkartan:'))
+        .forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(localCacheKey(bbox), JSON.stringify({ items, cachedAt: Date.now() }));
+    } catch { /* ignorera */ }
+  }
+}
+
 // ── Map setup ─────────────────────────────────────────────────────────────────
 function initMap(center) {
   map = L.map('map', {
@@ -261,6 +302,8 @@ function initMap(center) {
   }).addTo(map);
 
   markersLayer = L.layerGroup().addTo(map);
+
+  L.control.scale({ imperial: false, metric: true, maxWidth: 150 }).addTo(map);
 
   // Load data when map stops moving (debounced)
   let moveTimer;
@@ -286,6 +329,17 @@ async function loadData() {
     return;
   }
 
+  // Kolla lokal cache först
+  const cached = cacheGet(bbox);
+  if (cached) {
+    allItems = cached;
+    renderMarkers();
+    updateCounts();
+    loadedBbox = bbox;
+    setStatus(`${cached.length} platser (från cache).`);
+    return;
+  }
+
   setLoading(true, 'Hämtar historiska platser…');
   setStatus('');
 
@@ -297,6 +351,7 @@ async function loadData() {
       items = await fetchDirect(bbox);
     }
 
+    cachePut(bbox, items);
     allItems = items;
     renderMarkers();
     updateCounts();
